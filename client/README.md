@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# MiniRTC Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React SPA for MiniRTC. Handles room joining, call initiation (request/accept/decline), and peer-to-peer audio/video via browser-native WebRTC APIs.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Commands
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server on http://localhost:5173 |
+| `npm run build` | Production build to `dist/` |
+| `npx vitest run` | Run all tests |
+| `npx vitest run path/to/file.test.ts` | Run a single test file |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Requires the signaling server running on `ws://localhost:8080` (see `../server/`).
+
+## How It Works
+
+### Room Flow
+1. User creates a room (generates UUID) or joins by pasting a room ID/link
+2. Client opens a WebSocket to the signaling server and sends a `join` message
+3. Presence events (`peer-joined`, `peer-left`) show when the other user arrives/leaves
+
+### Call Flow
+1. Either user clicks **Call** — sends `call-request` via signaling
+2. Other user sees an incoming call banner with **Accept** / **Decline** (30s timeout)
+3. On accept, the caller initiates WebRTC: creates `RTCPeerConnection`, gets media, sends SDP offer
+4. Callee receives offer, gets media, sends SDP answer
+5. ICE candidates trickle in via signaling — once connectivity is established, media flows peer-to-peer
+
+### Key Technology
+- **React + TypeScript + Vite** — SPA framework and build tooling
+- **Browser WebRTC APIs** — `RTCPeerConnection`, `getUserMedia`, no third-party SDK
+- **WebSocket** — connects to signaling server for room presence and SDP/ICE exchange
+- **Google STUN servers** — NAT traversal for peer discovery (no TURN)
+- **Vitest + React Testing Library** — unit tests
+
+## Project Structure
+
+```
+src/
+  types.ts                      # Signaling protocol types (mirrored from server)
+  hooks/useWebSocket.ts         # WebSocket connection, send/receive messages
+  hooks/useWebSocket.test.ts    # WebSocket hook tests
+  hooks/useWebRTC.ts            # RTCPeerConnection, media streams, ICE
+  pages/Home.tsx                # Create/join room landing page
+  pages/Home.test.tsx           # Home page tests
+  pages/Room.tsx                # Call UI — video, controls, call signaling
+  components/VideoPlayer.tsx    # Video element with MediaStream binding
+  styles.css                    # Dark theme UI
+  App.tsx                       # Router setup
+  main.tsx                      # Entry point
 ```
