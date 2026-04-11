@@ -5,7 +5,10 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { VideoPlayer } from '../components/VideoPlayer';
 import type { ServerMessage } from '../types';
 
-const WS_URL = `ws://${window.location.hostname}:8080`;
+// Use the same host as the page — works with Vite proxy in dev
+// and with any reverse proxy (ngrok, nginx, etc.) in production
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${wsProtocol}//${window.location.host}/ws`;
 const CALL_TIMEOUT_MS = 30_000;
 
 type CallState =
