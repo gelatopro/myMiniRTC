@@ -48,6 +48,9 @@ export class SignalingServer {
       case 'leave':
         this.handleLeave(ws, user);
         break;
+      case 'call-request':
+      case 'call-accepted':
+      case 'call-declined':
       case 'offer':
       case 'answer':
       case 'ice-candidate':
@@ -126,7 +129,7 @@ export class SignalingServer {
   private relayToPeer(
     ws: WebSocket,
     user: User,
-    message: ClientMessage & { type: 'offer' | 'answer' | 'ice-candidate' },
+    message: ClientMessage & { type: 'call-request' | 'call-accepted' | 'call-declined' | 'offer' | 'answer' | 'ice-candidate' },
   ): void {
     if (!user.roomId) {
       this.log(`Tried to send ${message.type} without being in a room`, user.id);
@@ -146,16 +149,25 @@ export class SignalingServer {
     const peerWs = this.findSocketByUserId(peers[0]);
     if (!peerWs) return;
 
-    if (message.type === 'offer') {
-      this.send(peerWs, { type: 'offer', sdp: message.sdp, from: user.id });
-    } else if (message.type === 'answer') {
-      this.send(peerWs, { type: 'answer', sdp: message.sdp, from: user.id });
-    } else {
-      this.send(peerWs, {
-        type: 'ice-candidate',
-        candidate: message.candidate,
-        from: user.id,
-      });
+    switch (message.type) {
+      case 'call-request':
+        this.send(peerWs, { type: 'call-request', from: user.id });
+        break;
+      case 'call-accepted':
+        this.send(peerWs, { type: 'call-accepted', from: user.id });
+        break;
+      case 'call-declined':
+        this.send(peerWs, { type: 'call-declined', from: user.id });
+        break;
+      case 'offer':
+        this.send(peerWs, { type: 'offer', sdp: message.sdp, from: user.id });
+        break;
+      case 'answer':
+        this.send(peerWs, { type: 'answer', sdp: message.sdp, from: user.id });
+        break;
+      case 'ice-candidate':
+        this.send(peerWs, { type: 'ice-candidate', candidate: message.candidate, from: user.id });
+        break;
     }
   }
 

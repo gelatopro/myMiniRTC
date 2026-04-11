@@ -24,9 +24,24 @@ export interface IceCandidateMessage {
   candidate: RTCIceCandidateInit;
 }
 
+export interface CallRequestMessage {
+  type: 'call-request';
+}
+
+export interface CallAcceptedMessage {
+  type: 'call-accepted';
+}
+
+export interface CallDeclinedMessage {
+  type: 'call-declined';
+}
+
 export type ClientMessage =
   | JoinMessage
   | LeaveMessage
+  | CallRequestMessage
+  | CallAcceptedMessage
+  | CallDeclinedMessage
   | OfferMessage
   | AnswerMessage
   | IceCandidateMessage;
@@ -68,6 +83,21 @@ export interface IceCandidateEvent {
   from: string;
 }
 
+export interface CallRequestEvent {
+  type: 'call-request';
+  from: string;
+}
+
+export interface CallAcceptedEvent {
+  type: 'call-accepted';
+  from: string;
+}
+
+export interface CallDeclinedEvent {
+  type: 'call-declined';
+  from: string;
+}
+
 export interface ErrorEvent {
   type: 'error';
   code: string;
@@ -78,6 +108,9 @@ export type ServerMessage =
   | JoinedEvent
   | PeerJoinedEvent
   | PeerLeftEvent
+  | CallRequestEvent
+  | CallAcceptedEvent
+  | CallDeclinedEvent
   | OfferEvent
   | AnswerEvent
   | IceCandidateEvent

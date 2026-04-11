@@ -42,3 +42,10 @@ No deployment needed — all testable locally:
 2. **Two browser tabs** — once the client exists, open two tabs to the same room URL on localhost. Tests the full signaling + WebRTC flow end-to-end on one machine.
 3. **Node.js integration test script** — spin up two `ws` clients programmatically, simulate the full signaling handshake (join → offer → answer → ICE candidates), assert messages arrive correctly. Runs in CI without browsers.
 4. **Postman** — has WebSocket support, useful for interactive exploration of the protocol.
+
+## Testing Peer-to-Peer Audio/Video
+
+1. **Fake media in two Chrome tabs (fast dev iteration)** — enable `chrome://flags/#use-fake-device-for-media-stream` or launch Chrome with `--use-fake-device-for-media-stream`. Generates synthetic audio/video without a real mic/camera. Verifies `ontrack` fires, remote video renders, and connection state reaches `connected`.
+2. **`chrome://webrtc-internals` (debugging)** — shows live stats for every `RTCPeerConnection`: ICE state, candidate pairs, bytes sent/received, codec info. Use this to confirm P2P is actually working vs. silently failing.
+3. **Two devices on the same network (real audio test)** — run the server on your machine, access the client from a phone or another laptop via local IP (e.g., `http://192.168.1.x:5173`). Requires HTTPS for `getUserMedia` on non-localhost — Vite supports `--host --https`.
+4. **ngrok for cross-network testing** — expose your local server publicly (`ngrok http 5173`), gives an HTTPS URL shareable with anyone. Tests real NAT traversal (STUN).

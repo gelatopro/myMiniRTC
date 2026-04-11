@@ -69,3 +69,15 @@
   - Set bandwidth caps and session time limits
   - Monitor relay vs. direct connection ratio to control costs
 - For this project: we use Google's free STUN servers. No TURN — acceptable for a demo, but ~15% of real-world connections would fail without it.
+
+## 6. Manual Call Initiation (Call/Accept/Decline)
+
+**Decision:** Require explicit user action to start a call, with an accept/decline flow and 30-second timeout.
+
+**Previous approach:** Auto-start WebRTC when both users are in the room. This caused reliability issues with React StrictMode's double-mount cycle — the dev-mode connect/disconnect/reconnect race would confuse the caller/callee roles, leading to both sides sending offers or neither processing them.
+
+**Why manual is better:**
+- Completely decouples room presence from call state — joining a room is just WebSocket, no media involved
+- Eliminates all timing/race condition issues with StrictMode
+- Better UX — users control when their camera/mic activate, and can decline unwanted calls
+- Simpler mental model: room membership is one thing, calling is another

@@ -33,6 +33,13 @@ Media flows peer-to-peer via WebRTC. The server only handles signaling — it ne
 - `npx jest path/to/file.test.ts` — run a single test file
 - `wscat -c ws://localhost:8080` — manually test signaling protocol (install: `npm i -g wscat`). Send JSON messages like `{"type":"join","roomId":"test-room"}`. Open two terminals to test the full flow.
 
+### Client (`/client`)
+- `npx vitest run` — run all tests (Vitest + React Testing Library)
+- `npm run dev` — start Vite dev server on http://localhost:5173
+- `npm run build` — production build to `/dist`
+- `npx vitest run path/to/file.test.ts` — run a single test file
+- TypeScript uses `verbatimModuleSyntax` — use `import type` for type-only imports
+
 ## Important Rules
 
 - **Write unit tests for every change** when unit tests make sense. Ensure test coverage accompanies implementation work.

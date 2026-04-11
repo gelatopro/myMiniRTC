@@ -227,6 +227,74 @@ describe('SignalingServer', () => {
     });
   });
 
+  describe('call signaling', () => {
+    it('relays call-request to peer', async () => {
+      const ws1 = createClient();
+      const ws2 = createClient();
+      await Promise.all([waitForOpen(ws1), waitForOpen(ws2)]);
+
+      send(ws1, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws1);
+
+      send(ws2, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws2);
+      await waitForMessage(ws1); // peer-joined
+
+      send(ws1, { type: 'call-request' });
+      const msg = await waitForMessage(ws2);
+
+      expect(msg.type).toBe('call-request');
+      if (msg.type === 'call-request') {
+        expect(msg.from).toBeDefined();
+      }
+
+      ws1.close();
+      ws2.close();
+    });
+
+    it('relays call-accepted to peer', async () => {
+      const ws1 = createClient();
+      const ws2 = createClient();
+      await Promise.all([waitForOpen(ws1), waitForOpen(ws2)]);
+
+      send(ws1, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws1);
+
+      send(ws2, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws2);
+      await waitForMessage(ws1); // peer-joined
+
+      send(ws2, { type: 'call-accepted' });
+      const msg = await waitForMessage(ws1);
+
+      expect(msg.type).toBe('call-accepted');
+
+      ws1.close();
+      ws2.close();
+    });
+
+    it('relays call-declined to peer', async () => {
+      const ws1 = createClient();
+      const ws2 = createClient();
+      await Promise.all([waitForOpen(ws1), waitForOpen(ws2)]);
+
+      send(ws1, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws1);
+
+      send(ws2, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws2);
+      await waitForMessage(ws1); // peer-joined
+
+      send(ws2, { type: 'call-declined' });
+      const msg = await waitForMessage(ws1);
+
+      expect(msg.type).toBe('call-declined');
+
+      ws1.close();
+      ws2.close();
+    });
+  });
+
   describe('invalid messages', () => {
     it('returns error for unparseable messages', async () => {
       const ws = createClient();
