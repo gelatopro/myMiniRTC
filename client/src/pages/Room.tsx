@@ -84,7 +84,12 @@ export function Room() {
           webrtcRef.current?.handleSignalingMessage(message);
           break;
         case 'error':
-          setError(message.message);
+          if (message.code === 'ROOM_FULL') {
+            setError('Room is full. Redirecting...');
+            setTimeout(() => navigate('/'), 2000);
+          } else {
+            setError(message.message);
+          }
           break;
       }
     }, [clearCallTimeout]),
