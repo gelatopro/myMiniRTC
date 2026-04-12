@@ -36,12 +36,17 @@ export interface CallDeclinedMessage {
   type: 'call-declined';
 }
 
+export interface CallEndedMessage {
+  type: 'call-ended';
+}
+
 export type ClientMessage =
   | JoinMessage
   | LeaveMessage
   | CallRequestMessage
   | CallAcceptedMessage
   | CallDeclinedMessage
+  | CallEndedMessage
   | OfferMessage
   | AnswerMessage
   | IceCandidateMessage;
@@ -98,6 +103,11 @@ export interface CallDeclinedEvent {
   from: string;
 }
 
+export interface CallEndedEvent {
+  type: 'call-ended';
+  from: string;
+}
+
 export interface ErrorEvent {
   type: 'error';
   code: string;
@@ -111,6 +121,7 @@ export type ServerMessage =
   | CallRequestEvent
   | CallAcceptedEvent
   | CallDeclinedEvent
+  | CallEndedEvent
   | OfferEvent
   | AnswerEvent
   | IceCandidateEvent

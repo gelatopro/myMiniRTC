@@ -18,6 +18,7 @@ export type ClientMessage =
   | { type: 'call-request' }
   | { type: 'call-accepted' }
   | { type: 'call-declined' }
+  | { type: 'call-ended' }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
   | { type: 'ice-candidate'; candidate: RTCIceCandidateInit };
@@ -30,6 +31,7 @@ export type ServerMessage =
   | { type: 'call-request'; from: string }
   | { type: 'call-accepted'; from: string }
   | { type: 'call-declined'; from: string }
+  | { type: 'call-ended'; from: string }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit; from: string }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit; from: string }
   | { type: 'ice-candidate'; candidate: RTCIceCandidateInit; from: string }

@@ -51,6 +51,7 @@ export class SignalingServer {
       case 'call-request':
       case 'call-accepted':
       case 'call-declined':
+      case 'call-ended':
       case 'offer':
       case 'answer':
       case 'ice-candidate':
@@ -129,7 +130,7 @@ export class SignalingServer {
   private relayToPeer(
     ws: WebSocket,
     user: User,
-    message: ClientMessage & { type: 'call-request' | 'call-accepted' | 'call-declined' | 'offer' | 'answer' | 'ice-candidate' },
+    message: ClientMessage & { type: 'call-request' | 'call-accepted' | 'call-declined' | 'call-ended' | 'offer' | 'answer' | 'ice-candidate' },
   ): void {
     if (!user.roomId) {
       this.log(`Tried to send ${message.type} without being in a room`, user.id);
@@ -158,6 +159,9 @@ export class SignalingServer {
         break;
       case 'call-declined':
         this.send(peerWs, { type: 'call-declined', from: user.id });
+        break;
+      case 'call-ended':
+        this.send(peerWs, { type: 'call-ended', from: user.id });
         break;
       case 'offer':
         this.send(peerWs, { type: 'offer', sdp: message.sdp, from: user.id });

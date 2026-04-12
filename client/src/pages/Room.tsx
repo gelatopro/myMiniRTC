@@ -5,6 +5,28 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { VideoPlayer } from '../components/VideoPlayer';
 import type { ServerMessage } from '../types';
 
+function MicIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+      {muted && <line x1="1" y1="1" x2="23" y2="23" stroke="#e54545" strokeWidth="2.5" />}
+    </svg>
+  );
+}
+
+function CamIcon({ off }: { off: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+      {off && <line x1="1" y1="1" x2="23" y2="23" stroke="#e54545" strokeWidth="2.5" />}
+    </svg>
+  );
+}
+
 // Use the same host as the page — works with Vite proxy in dev
 // and with any reverse proxy (ngrok, nginx, etc.) in production
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -23,6 +45,8 @@ export function Room() {
   const [peerId, setPeerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [callState, setCallState] = useState<CallState>('idle');
+  const [showLeaveMenu, setShowLeaveMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const webrtcRef = useRef<ReturnType<typeof useWebRTC>>(null);
@@ -74,6 +98,11 @@ export function Room() {
           setCallState('idle');
           setError('Call was declined');
           setTimeout(() => setError(null), 3000);
+          break;
+        case 'call-ended':
+          clearCallTimeout();
+          webrtcRef.current?.hangUp();
+          setCallState('idle');
           break;
 
         // WebRTC signaling
@@ -171,17 +200,25 @@ export function Room() {
 
   const endCall = () => {
     hangUp();
+    send({ type: 'call-ended' });
     setCallState('idle');
   };
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div className="room">
       <header className="room-header">
-        <h2>Room: {roomId?.slice(0, 8)}...</h2>
+        <div className="room-header-left">
+          <h2>Room: {roomId?.slice(0, 8)}...</h2>
+          <button className="btn btn-copy-link" onClick={copyLink}>
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+        </div>
         <div className="status-badges">
           <span className={`badge ws-${wsStatus}`}>
             WS: {wsStatus}
@@ -228,40 +265,74 @@ export function Room() {
       </div>
 
       <div className="controls">
-        {/* Call button — only show when peer is present and no call active */}
-        {peerId && callState === 'idle' && (
-          <button className="btn btn-primary" onClick={requestCall}>
-            Call
-          </button>
-        )}
+        {/* Left side: media controls (during call) */}
+        <div className="controls-left">
+          {callState === 'in-call' && (
+            <>
+              <button
+                className={`btn btn-icon ${isMuted ? 'btn-icon-off' : ''}`}
+                onClick={toggleMute}
+                disabled={!localStream}
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                <MicIcon muted={isMuted} />
+              </button>
+              <button
+                className={`btn btn-icon ${isVideoOff ? 'btn-icon-off' : ''}`}
+                onClick={toggleVideo}
+                disabled={!localStream}
+                title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
+              >
+                <CamIcon off={isVideoOff} />
+              </button>
+            </>
+          )}
+        </div>
 
-        {/* In-call controls */}
-        {callState === 'in-call' && (
-          <>
-            <button className="btn" onClick={toggleMute} disabled={!localStream}>
-              {isMuted ? '🔇 Unmute' : '🔊 Mute'}
+        {/* Right side: call/leave actions */}
+        <div className="controls-right">
+          {peerId && callState === 'idle' && (
+            <button className="btn btn-primary" onClick={requestCall}>
+              Call
             </button>
-            <button className="btn" onClick={toggleVideo} disabled={!localStream}>
-              {isVideoOff ? '📷 Video On' : '📹 Video Off'}
-            </button>
-            <button className="btn btn-danger" onClick={endCall}>
-              End Call
-            </button>
-          </>
-        )}
+          )}
 
-        <button className="btn" onClick={copyLink}>
-          📋 Copy Link
-        </button>
-        <button className="btn btn-danger" onClick={leaveRoom}>
-          Leave Room
-        </button>
+          {callState === 'in-call' ? (
+            <div className="leave-menu-wrapper">
+              <button
+                className="btn btn-danger"
+                onClick={() => setShowLeaveMenu(!showLeaveMenu)}
+              >
+                Leave
+              </button>
+              {showLeaveMenu && (
+                <>
+                  <div className="leave-menu-backdrop" onClick={() => setShowLeaveMenu(false)} />
+                  <div className="leave-menu">
+                    <button className="leave-menu-item" onClick={() => { setShowLeaveMenu(false); endCall(); }}>
+                      End call
+                    </button>
+                    <button className="leave-menu-item leave-menu-danger" onClick={() => { setShowLeaveMenu(false); endCall(); leaveRoom(); }}>
+                      End call &amp; leave room
+                    </button>
+                    <button className="leave-menu-cancel" onClick={() => setShowLeaveMenu(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <button className="btn btn-danger" onClick={leaveRoom}>
+              Leave
+            </button>
+          )}
+        </div>
       </div>
 
       {!peerId && wsStatus === 'connected' && (
         <div className="waiting">
-          <p>Share this link with someone to start a call:</p>
-          <code>{window.location.href}</code>
+          <p>Waiting for a peer to join...</p>
         </div>
       )}
     </div>
