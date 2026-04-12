@@ -45,7 +45,7 @@
 
 ---
 
-## Scaling & Cost (PRD Required)
+## Scaling & Cost
 
 ### What breaks at 10k rooms/day?
 

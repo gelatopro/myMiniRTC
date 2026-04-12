@@ -17,67 +17,53 @@ A simple 1:1 WebRTC calling app. Users create or join a room by URL and can star
 - **Signaling Server** — relays SDP offers/answers and ICE candidates between peers, manages room membership and presence. No media ever touches the server.
 - **Client** — React SPA using browser-native WebRTC APIs (`RTCPeerConnection`, `getUserMedia`).
 
-## Run Locally
+## Demo
+
+[Watch the demo video](https://drive.google.com/file/d/1aw3ZA6xUzD9rl0MJD2ZQjCMQt2pHQT3w/view?usp=drive_link)
+
+## How to Run
 
 ### Prerequisites
 - Node.js 18+
 - npm
+- [ngrok](https://ngrok.com/) (for cross-device testing)
 
-### Setup
+### Quick Start
+
 ```bash
-# Install dependencies for both server and client
+# Install dependencies
 cd server && npm install && cd ..
 cd client && npm install && cd ..
-```
 
-### Start
-```bash
 # Terminal 1: start signaling server
-cd server
-npm run dev    # ws://localhost:8080
+cd server && npm run dev       # ws://localhost:8080
 
 # Terminal 2: start client
-cd client
-npm run dev    # http://localhost:5173
+cd client && npm run dev --host  # http://localhost:5173
+
+# Terminal 3: expose via ngrok (single tunnel — WebSocket proxied through Vite)
+ngrok http 5173
 ```
 
-### Tests
+Open the ngrok HTTPS URL on two devices, create a room on one, share the link with the other, and call.
+
+> ~85% of connections work with STUN only. If both devices are behind symmetric NATs, the connection will fail (requires TURN, not included in this prototype).
+
+### Local Testing (single machine)
+
+Two browser tabs also work:
+1. Open http://localhost:5173
+2. Click **Create Room**, copy the URL, open in a second tab
+3. Click **Call** on either tab, **Accept** on the other
+
+## Tests
+
 ```bash
 cd server && npm test          # 24 tests (Jest)
 cd client && npx vitest run    # 9 tests (Vitest)
 ```
 
 ## Manual Testing
-
-### Two browser tabs (same machine)
-1. Open http://localhost:5173
-2. Click **Create Room**
-3. Copy the URL and open it in a second browser tab
-4. Click **Call** on either tab
-5. Click **Accept** on the other tab
-6. Both tabs should show local + remote video, with status **CALL: CONNECTED**
-
-> Audio may not be noticeable on a single machine (same mic/speakers). Use headphones or mute one tab's mic to verify.
-
-### Two devices via ngrok (cross-network)
-```bash
-# Terminal 1: start server
-cd server && npm run dev
-
-# Terminal 2: start client with network access
-cd client && npm run dev --host
-
-# Terminal 3: expose via ngrok (single tunnel)
-ngrok http 5173
-```
-
-The client proxies WebSocket connections through Vite (`/ws` → `localhost:8080`), so only one ngrok tunnel is needed.
-
-1. Open the ngrok HTTPS URL on both devices
-2. One device creates a room, shares the link with the other
-3. Follow the call flow above
-
-> ~85% of connections work with STUN only. If both devices are behind symmetric NATs, the connection will fail (requires TURN, not included).
 
 ### Signaling server with wscat
 ```bash
