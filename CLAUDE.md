@@ -47,6 +47,6 @@ Media flows peer-to-peer via WebRTC. The server only handles signaling — it ne
 
 ## Reference Documents
 
-- `PRD.md` — product requirements
+- `docs/PRD.md` — product requirements
 - `DECISIONS.md` — architectural tradeoffs and scaling/cost analysis
-- `plan.md` — implementation plan with technology choices and testing strategy
+- `docs/plan.md` — implementation plan with technology choices and testing strategy

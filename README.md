@@ -119,4 +119,5 @@ Open `chrome://webrtc-internals` in Chrome to inspect live PeerConnection stats:
 ## Documentation
 
 - [DECISIONS.md](DECISIONS.md) — architectural tradeoffs, scaling analysis, cost considerations
-- [plan.md](plan.md) — implementation plan and testing strategy
+- [docs/plan.md](docs/plan.md) — implementation plan and testing strategy
+- [docs/PRD.md](docs/PRD.md) — product requirements

@@ -29,6 +29,10 @@ All messages are JSON over WebSocket.
 |------|--------|-------------|
 | `join` | `roomId` | Join or create a room |
 | `leave` | — | Leave current room |
+| `call-request` | — | Request a call with peer |
+| `call-accepted` | — | Accept an incoming call |
+| `call-declined` | — | Decline an incoming call |
+| `call-ended` | — | End the current call |
 | `offer` | `sdp` | Send SDP offer to peer |
 | `answer` | `sdp` | Send SDP answer to peer |
 | `ice-candidate` | `candidate` | Send ICE candidate to peer |
@@ -40,6 +44,10 @@ All messages are JSON over WebSocket.
 | `joined` | `roomId`, `userId`, `peers` | Confirms room join |
 | `peer-joined` | `userId` | A peer entered your room |
 | `peer-left` | `userId` | A peer left your room |
+| `call-request` | `from` | Peer wants to start a call |
+| `call-accepted` | `from` | Peer accepted your call |
+| `call-declined` | `from` | Peer declined your call |
+| `call-ended` | `from` | Peer ended the call |
 | `offer` | `sdp`, `from` | Relayed SDP offer |
 | `answer` | `sdp`, `from` | Relayed SDP answer |
 | `ice-candidate` | `candidate`, `from` | Relayed ICE candidate |

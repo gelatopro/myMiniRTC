@@ -55,4 +55,5 @@ src/
   styles.css                    # Dark theme UI
   App.tsx                       # Router setup
   main.tsx                      # Entry point
+  test-setup.ts                 # Vitest setup (jest-dom matchers)
 ```

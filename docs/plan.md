@@ -45,7 +45,6 @@ No deployment needed — all testable locally:
 
 ## Testing Peer-to-Peer Audio/Video
 
-1. **Fake media in two Chrome tabs (fast dev iteration)** — enable `chrome://flags/#use-fake-device-for-media-stream` or launch Chrome with `--use-fake-device-for-media-stream`. Generates synthetic audio/video without a real mic/camera. Verifies `ontrack` fires, remote video renders, and connection state reaches `connected`.
-2. **`chrome://webrtc-internals` (debugging)** — shows live stats for every `RTCPeerConnection`: ICE state, candidate pairs, bytes sent/received, codec info. Use this to confirm P2P is actually working vs. silently failing.
-3. **Two devices on the same network (real audio test)** — run the server on your machine, access the client from a phone or another laptop via local IP (e.g., `http://192.168.1.x:5173`). Requires HTTPS for `getUserMedia` on non-localhost — Vite supports `--host --https`.
-4. **ngrok for cross-network testing** — expose your local server publicly (`ngrok http 5173`), gives an HTTPS URL shareable with anyone. Tests real NAT traversal (STUN).
+1. **Two browser tabs on localhost (primary dev method)** — open http://localhost:5173, create a room, open the same URL in a second tab. Both tabs share the same camera/mic. Video is visible on both sides; audio is hard to distinguish on a single machine (use headphones or mute one tab to verify).
+2. **`chrome://webrtc-internals` (debugging)** — shows live stats for every `RTCPeerConnection`: ICE state, candidate pairs, bytes sent/received, codec info. Useful to confirm P2P is working vs. silently failing. Not used extensively during this project but available when needed.
+3. **ngrok for cross-network testing (used)** — expose the client via `ngrok http 5173` (single tunnel, WebSocket proxied through Vite). Gives an HTTPS URL usable on any device. Tests real NAT traversal with STUN. This was the primary method for testing real audio/video between two separate laptops.
