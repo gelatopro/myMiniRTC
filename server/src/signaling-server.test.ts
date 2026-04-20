@@ -295,6 +295,228 @@ describe('SignalingServer', () => {
     });
   });
 
+  describe('list-rooms', () => {
+    it('responds with room-list containing current rooms', async () => {
+      // First create a room
+      const ws1 = createClient();
+      await waitForOpen(ws1);
+      send(ws1, { type: 'join', roomId: 'room-a' });
+      await waitForMessage(ws1); // joined
+
+      // Now subscribe from lobby
+      const lobby = createClient();
+      await waitForOpen(lobby);
+      send(lobby, { type: 'list-rooms' });
+      const msg = await waitForMessage(lobby);
+
+      expect(msg.type).toBe('room-list');
+      if (msg.type === 'room-list') {
+        expect(msg.rooms).toEqual([{ roomId: 'room-a', roomName: undefined, userCount: 1 }]);
+      }
+
+      ws1.close();
+      lobby.close();
+    });
+
+    it('broadcasts updated room-list when a user joins a room', async () => {
+      const lobby = createClient();
+      await waitForOpen(lobby);
+      send(lobby, { type: 'list-rooms' });
+      const initial = await waitForMessage(lobby);
+      expect(initial.type).toBe('room-list');
+      if (initial.type === 'room-list') {
+        expect(initial.rooms).toEqual([]);
+      }
+
+      // Another client joins a room
+      const ws1 = createClient();
+      await waitForOpen(ws1);
+      send(ws1, { type: 'join', roomId: 'room-b' });
+      await waitForMessage(ws1); // joined
+
+      const update = await waitForMessage(lobby);
+      expect(update.type).toBe('room-list');
+      if (update.type === 'room-list') {
+        expect(update.rooms).toEqual([{ roomId: 'room-b', roomName: undefined, userCount: 1 }]);
+      }
+
+      ws1.close();
+      lobby.close();
+    });
+
+    it('broadcasts updated room-list when a user leaves', async () => {
+      const ws1 = createClient();
+      await waitForOpen(ws1);
+      send(ws1, { type: 'join', roomId: 'room-c' });
+      await waitForMessage(ws1); // joined
+
+      const lobby = createClient();
+      await waitForOpen(lobby);
+      send(lobby, { type: 'list-rooms' });
+      const initial = await waitForMessage(lobby);
+      expect(initial.type).toBe('room-list');
+      if (initial.type === 'room-list') {
+        expect(initial.rooms).toHaveLength(1);
+      }
+
+      // User leaves (disconnect)
+      ws1.close();
+      const update = await waitForMessage(lobby);
+      expect(update.type).toBe('room-list');
+      if (update.type === 'room-list') {
+        expect(update.rooms).toEqual([]);
+      }
+
+      lobby.close();
+    });
+
+    it('stops sending updates after subscriber joins a room', async () => {
+      const ws = createClient();
+      await waitForOpen(ws);
+      send(ws, { type: 'list-rooms' });
+      await waitForMessage(ws); // initial room-list
+
+      // Subscribe then join a room — should stop receiving lobby updates
+      send(ws, { type: 'join', roomId: 'my-room' });
+      const joined = await waitForMessage(ws);
+      expect(joined.type).toBe('joined');
+
+      // Another client joins a different room
+      const ws2 = createClient();
+      await waitForOpen(ws2);
+      send(ws2, { type: 'join', roomId: 'other-room' });
+      await waitForMessage(ws2); // joined
+
+      // ws should NOT receive a room-list update — give it a short window
+      const raceResult = await Promise.race([
+        waitForMessage(ws).then((m) => m),
+        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 200)),
+      ]);
+
+      expect(raceResult).toBe('timeout');
+
+      ws.close();
+      ws2.close();
+    });
+  });
+
+  describe('room names', () => {
+    it('includes roomName in joined response when provided', async () => {
+      const ws = createClient();
+      await waitForOpen(ws);
+
+      send(ws, { type: 'join', roomId: 'test-room', roomName: 'Standup' });
+      const msg = await waitForMessage(ws);
+
+      expect(msg.type).toBe('joined');
+      if (msg.type === 'joined') {
+        expect(msg.roomName).toBe('Standup');
+      }
+
+      ws.close();
+    });
+
+    it('joined response has undefined roomName when not provided', async () => {
+      const ws = createClient();
+      await waitForOpen(ws);
+
+      send(ws, { type: 'join', roomId: 'test-room' });
+      const msg = await waitForMessage(ws);
+
+      expect(msg.type).toBe('joined');
+      if (msg.type === 'joined') {
+        expect(msg.roomName).toBeUndefined();
+      }
+
+      ws.close();
+    });
+
+    it('update-room-name broadcasts to peer', async () => {
+      const ws1 = createClient();
+      const ws2 = createClient();
+      await Promise.all([waitForOpen(ws1), waitForOpen(ws2)]);
+
+      send(ws1, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws1);
+
+      send(ws2, { type: 'join', roomId: 'test-room' });
+      await waitForMessage(ws2);
+      await waitForMessage(ws1); // peer-joined
+
+      send(ws1, { type: 'update-room-name', name: 'New Name' });
+      const msg = await waitForMessage(ws2);
+
+      expect(msg.type).toBe('room-name-updated');
+      if (msg.type === 'room-name-updated') {
+        expect(msg.name).toBe('New Name');
+      }
+
+      ws1.close();
+      ws2.close();
+    });
+
+    it('update-room-name broadcasts updated room-list to lobby', async () => {
+      const ws1 = createClient();
+      const lobby = createClient();
+      await Promise.all([waitForOpen(ws1), waitForOpen(lobby)]);
+
+      send(ws1, { type: 'join', roomId: 'test-room', roomName: 'Old' });
+      await waitForMessage(ws1);
+
+      send(lobby, { type: 'list-rooms' });
+      const initial = await waitForMessage(lobby);
+      expect(initial.type).toBe('room-list');
+      if (initial.type === 'room-list') {
+        expect(initial.rooms[0].roomName).toBe('Old');
+      }
+
+      send(ws1, { type: 'update-room-name', name: 'Updated' });
+      const update = await waitForMessage(lobby);
+      expect(update.type).toBe('room-list');
+      if (update.type === 'room-list') {
+        expect(update.rooms[0].roomName).toBe('Updated');
+      }
+
+      ws1.close();
+      lobby.close();
+    });
+
+    it('update-room-name returns error when not in a room', async () => {
+      const ws = createClient();
+      await waitForOpen(ws);
+
+      send(ws, { type: 'update-room-name', name: 'Test' });
+      const msg = await waitForMessage(ws);
+
+      expect(msg.type).toBe('error');
+      if (msg.type === 'error') {
+        expect(msg.code).toBe('NOT_IN_ROOM');
+      }
+
+      ws.close();
+    });
+
+    it('room-list includes roomName for named rooms', async () => {
+      const ws1 = createClient();
+      await waitForOpen(ws1);
+      send(ws1, { type: 'join', roomId: 'room-named', roomName: 'Team Call' });
+      await waitForMessage(ws1);
+
+      const lobby = createClient();
+      await waitForOpen(lobby);
+      send(lobby, { type: 'list-rooms' });
+      const msg = await waitForMessage(lobby);
+
+      expect(msg.type).toBe('room-list');
+      if (msg.type === 'room-list') {
+        expect(msg.rooms).toEqual([{ roomId: 'room-named', roomName: 'Team Call', userCount: 1 }]);
+      }
+
+      ws1.close();
+      lobby.close();
+    });
+  });
+
   describe('invalid messages', () => {
     it('returns error for unparseable messages', async () => {
       const ws = createClient();

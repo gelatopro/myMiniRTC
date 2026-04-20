@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { RoomManager, RoomFullError, User } from './room-manager';
-import { ClientMessage, ServerMessage } from './types';
+import { ClientMessage, ServerMessage, RoomInfo } from './types';
 
 export interface SignalingServerOptions {
   port: number;
@@ -10,6 +10,7 @@ export class SignalingServer {
   private wss: WebSocketServer;
   private roomManager: RoomManager;
   private clients = new Map<WebSocket, User>();
+  private lobbySubscribers = new Set<WebSocket>();
 
   constructor(options: SignalingServerOptions) {
     this.roomManager = new RoomManager();
@@ -43,10 +44,16 @@ export class SignalingServer {
   private handleMessage(ws: WebSocket, user: User, message: ClientMessage): void {
     switch (message.type) {
       case 'join':
-        this.handleJoin(ws, user, message.roomId);
+        this.handleJoin(ws, user, message.roomId, message.roomName);
         break;
       case 'leave':
         this.handleLeave(ws, user);
+        break;
+      case 'update-room-name':
+        this.handleUpdateRoomName(ws, user, message.name);
+        break;
+      case 'list-rooms':
+        this.handleListRooms(ws);
         break;
       case 'call-request':
       case 'call-accepted':
@@ -60,7 +67,34 @@ export class SignalingServer {
     }
   }
 
-  private handleJoin(ws: WebSocket, user: User, roomId: string): void {
+  private handleListRooms(ws: WebSocket): void {
+    this.lobbySubscribers.add(ws);
+    this.sendRoomList(ws);
+  }
+
+  private handleUpdateRoomName(ws: WebSocket, user: User, name: string): void {
+    if (!user.roomId) {
+      this.send(ws, {
+        type: 'error',
+        code: 'NOT_IN_ROOM',
+        message: 'You must join a room before updating its name',
+      });
+      return;
+    }
+
+    this.roomManager.updateRoomName(user.roomId, name);
+    this.log(`Updated room name to "${name}" in ${user.roomId}`, user.id);
+
+    // Notify peer in the room
+    this.broadcastToRoom(user.id, {
+      type: 'room-name-updated',
+      name,
+    });
+
+    this.broadcastRoomList();
+  }
+
+  private handleJoin(ws: WebSocket, user: User, roomId: string, roomName?: string): void {
     if (!roomId || typeof roomId !== 'string') {
       this.send(ws, {
         type: 'error',
@@ -76,13 +110,17 @@ export class SignalingServer {
     }
 
     try {
-      const { peers } = this.roomManager.joinRoom(user, roomId);
+      const { room, peers } = this.roomManager.joinRoom(user, roomId, roomName);
       this.log(`Joined room ${roomId} (${peers.length + 1}/2 in room)`, user.id);
+
+      // User is entering a room — remove from lobby subscribers
+      this.lobbySubscribers.delete(ws);
 
       // Confirm join to the user
       this.send(ws, {
         type: 'joined',
         roomId,
+        roomName: room.name,
         userId: user.id,
         peers,
       });
@@ -92,6 +130,8 @@ export class SignalingServer {
         type: 'peer-joined',
         userId: user.id,
       });
+
+      this.broadcastRoomList();
     } catch (err) {
       if (err instanceof RoomFullError) {
         this.log(`Rejected from room ${roomId} (full)`, user.id);
@@ -119,10 +159,13 @@ export class SignalingServer {
         });
       }
     }
+
+    this.broadcastRoomList();
   }
 
   private handleDisconnect(ws: WebSocket, user: User): void {
     this.log(`Client disconnected`, user.id);
+    this.lobbySubscribers.delete(ws);
     this.handleLeave(ws, user);
     this.clients.delete(ws);
   }
@@ -172,6 +215,19 @@ export class SignalingServer {
       case 'ice-candidate':
         this.send(peerWs, { type: 'ice-candidate', candidate: message.candidate, from: user.id });
         break;
+    }
+  }
+
+  private sendRoomList(ws: WebSocket): void {
+    this.send(ws, {
+      type: 'room-list',
+      rooms: this.roomManager.listRooms(),
+    });
+  }
+
+  private broadcastRoomList(): void {
+    for (const ws of this.lobbySubscribers) {
+      this.sendRoomList(ws);
     }
   }
 

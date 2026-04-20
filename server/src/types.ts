@@ -3,6 +3,7 @@
 export interface JoinMessage {
   type: 'join';
   roomId: string;
+  roomName?: string;
 }
 
 export interface LeaveMessage {
@@ -40,6 +41,15 @@ export interface CallEndedMessage {
   type: 'call-ended';
 }
 
+export interface UpdateRoomNameMessage {
+  type: 'update-room-name';
+  name: string;
+}
+
+export interface ListRoomsMessage {
+  type: 'list-rooms';
+}
+
 export type ClientMessage =
   | JoinMessage
   | LeaveMessage
@@ -47,6 +57,8 @@ export type ClientMessage =
   | CallAcceptedMessage
   | CallDeclinedMessage
   | CallEndedMessage
+  | UpdateRoomNameMessage
+  | ListRoomsMessage
   | OfferMessage
   | AnswerMessage
   | IceCandidateMessage;
@@ -56,6 +68,7 @@ export type ClientMessage =
 export interface JoinedEvent {
   type: 'joined';
   roomId: string;
+  roomName?: string;
   userId: string;
   peers: string[];
 }
@@ -108,6 +121,22 @@ export interface CallEndedEvent {
   from: string;
 }
 
+export interface RoomInfo {
+  roomId: string;
+  roomName?: string;
+  userCount: number;
+}
+
+export interface RoomNameUpdatedEvent {
+  type: 'room-name-updated';
+  name: string;
+}
+
+export interface RoomListEvent {
+  type: 'room-list';
+  rooms: RoomInfo[];
+}
+
 export interface ErrorEvent {
   type: 'error';
   code: string;
@@ -125,6 +154,8 @@ export type ServerMessage =
   | OfferEvent
   | AnswerEvent
   | IceCandidateEvent
+  | RoomListEvent
+  | RoomNameUpdatedEvent
   | ErrorEvent;
 
 // ── Shared types ──

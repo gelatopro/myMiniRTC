@@ -7,6 +7,7 @@ export interface User {
 
 export interface Room {
   id: string;
+  name?: string;
   users: Map<string, User>;
 }
 
@@ -18,7 +19,7 @@ export class RoomManager {
     return { id: uuidv4(), roomId: null };
   }
 
-  joinRoom(user: User, roomId: string): { room: Room; peers: string[] } {
+  joinRoom(user: User, roomId: string, roomName?: string): { room: Room; peers: string[] } {
     let room = this.rooms.get(roomId);
 
     if (room && room.users.size >= 2) {
@@ -26,7 +27,7 @@ export class RoomManager {
     }
 
     if (!room) {
-      room = { id: roomId, users: new Map() };
+      room = { id: roomId, name: roomName, users: new Map() };
       this.rooms.set(roomId, room);
     }
 
@@ -73,6 +74,21 @@ export class RoomManager {
     const room = this.getUserRoom(userId);
     if (!room) return [];
     return Array.from(room.users.keys()).filter((id) => id !== userId);
+  }
+
+  updateRoomName(roomId: string, name: string): boolean {
+    const room = this.rooms.get(roomId);
+    if (!room) return false;
+    room.name = name;
+    return true;
+  }
+
+  listRooms(): { roomId: string; roomName?: string; userCount: number }[] {
+    return Array.from(this.rooms.values()).map((room) => ({
+      roomId: room.id,
+      roomName: room.name,
+      userCount: room.users.size,
+    }));
   }
 
   get roomCount(): number {

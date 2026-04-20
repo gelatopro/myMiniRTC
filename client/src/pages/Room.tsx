@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { VideoPlayer } from '../components/VideoPlayer';
@@ -27,10 +27,8 @@ function CamIcon({ off }: { off: boolean }) {
   );
 }
 
-// Use the same host as the page — works with Vite proxy in dev
-// and with any reverse proxy (ngrok, nginx, etc.) in production
-const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL = `${wsProtocol}//${window.location.host}/ws`;
+import { WS_URL } from '../config';
+
 const CALL_TIMEOUT_MS = 30_000;
 
 type CallState =
@@ -41,12 +39,18 @@ type CallState =
 
 export function Room() {
   const { roomId } = useParams<{ roomId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [peerId, setPeerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [callState, setCallState] = useState<CallState>('idle');
   const [showLeaveMenu, setShowLeaveMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [roomName, setRoomName] = useState<string | undefined>(
+    searchParams.get('name') || undefined,
+  );
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const webrtcRef = useRef<ReturnType<typeof useWebRTC>>(null);
@@ -65,9 +69,15 @@ export function Room() {
       switch (message.type) {
         case 'joined':
           setError(null);
+          if (message.roomName) {
+            setRoomName(message.roomName);
+          }
           if (message.peers.length > 0) {
             setPeerId(message.peers[0]);
           }
+          break;
+        case 'room-name-updated':
+          setRoomName(message.name);
           break;
         case 'peer-joined':
           setPeerId(message.userId);
@@ -151,9 +161,10 @@ export function Room() {
   // Join room once WebSocket is connected
   useEffect(() => {
     if (wsStatus === 'connected' && roomId) {
-      send({ type: 'join', roomId });
+      const name = searchParams.get('name') || undefined;
+      send({ type: 'join', roomId, roomName: name });
     }
-  }, [wsStatus, roomId, send]);
+  }, [wsStatus, roomId, searchParams, send]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -214,7 +225,45 @@ export function Room() {
     <div className="room">
       <header className="room-header">
         <div className="room-header-left">
-          <h2>Room: {roomId?.slice(0, 8)}...</h2>
+          {isEditingName ? (
+            <input
+              className="room-name-input"
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const name = editNameValue.trim();
+                  if (name) {
+                    send({ type: 'update-room-name', name });
+                    setRoomName(name);
+                  }
+                  setIsEditingName(false);
+                } else if (e.key === 'Escape') {
+                  setIsEditingName(false);
+                }
+              }}
+              onBlur={() => {
+                const name = editNameValue.trim();
+                if (name) {
+                  send({ type: 'update-room-name', name });
+                  setRoomName(name);
+                }
+                setIsEditingName(false);
+              }}
+              autoFocus
+            />
+          ) : (
+            <h2
+              className="room-name-editable"
+              onClick={() => {
+                setEditNameValue(roomName || '');
+                setIsEditingName(true);
+              }}
+              title="Click to edit room name"
+            >
+              {roomName || `Room: ${roomId?.slice(0, 8)}...`}
+            </h2>
+          )}
           <button className="btn btn-copy-link" onClick={copyLink}>
             {copied ? 'Copied!' : 'Copy Link'}
           </button>

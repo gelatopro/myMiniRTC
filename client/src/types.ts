@@ -13,19 +13,21 @@ export interface RTCIceCandidateInit {
 
 // Client → Server
 export type ClientMessage =
-  | { type: 'join'; roomId: string }
+  | { type: 'join'; roomId: string; roomName?: string }
   | { type: 'leave' }
   | { type: 'call-request' }
   | { type: 'call-accepted' }
   | { type: 'call-declined' }
   | { type: 'call-ended' }
+  | { type: 'update-room-name'; name: string }
+  | { type: 'list-rooms' }
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
   | { type: 'ice-candidate'; candidate: RTCIceCandidateInit };
 
 // Server → Client
 export type ServerMessage =
-  | { type: 'joined'; roomId: string; userId: string; peers: string[] }
+  | { type: 'joined'; roomId: string; roomName?: string; userId: string; peers: string[] }
   | { type: 'peer-joined'; userId: string }
   | { type: 'peer-left'; userId: string }
   | { type: 'call-request'; from: string }
@@ -35,4 +37,6 @@ export type ServerMessage =
   | { type: 'offer'; sdp: RTCSessionDescriptionInit; from: string }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit; from: string }
   | { type: 'ice-candidate'; candidate: RTCIceCandidateInit; from: string }
+  | { type: 'room-list'; rooms: { roomId: string; roomName?: string; userCount: number }[] }
+  | { type: 'room-name-updated'; name: string }
   | { type: 'error'; code: string; message: string };

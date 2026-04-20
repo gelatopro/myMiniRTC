@@ -81,3 +81,31 @@
 - Eliminates all timing/race condition issues with StrictMode
 - Better UX — users control when their camera/mic activate, and can decline unwanted calls
 - Simpler mental model: room membership is one thing, calling is another
+
+## 7. WebSocket for Room Discovery (Lobby)
+
+**Decision:** Use the existing WebSocket signaling connection for room listing/discovery on the home page, rather than adding a REST endpoint.
+
+**Alternatives considered:**
+- REST `GET /api/rooms` endpoint — simple request/response, but requires adding an HTTP layer (e.g., Express) to the WS-only server, and needs polling or manual refresh for live updates
+- REST + SSE hybrid — HTTP for initial fetch, SSE for push updates — adds two new transport mechanisms
+
+**Why WebSocket wins:**
+- Already the project's transport layer — no new dependencies or server infrastructure
+- Enables real-time push: the home page immediately reflects room creation, joins, and departures without polling
+- Lobby subscribers are tracked via a `Set<WebSocket>` and automatically cleaned up on disconnect or when the client joins a room (switching from lobby mode to signaling mode)
+
+**Protocol:** Client sends `{ type: "list-rooms" }` → server responds with `{ type: "room-list", rooms: [{ roomId, roomName?, userCount }] }` and continues pushing updates on any room state change. Subscriber is removed when they join a room or disconnect.
+
+## 8. Optional Room Names (Cosmetic, Not Identifier)
+
+**Decision:** Rooms have an optional human-readable `name` field. The UUID remains the sole identifier for routing and lookups; the name is purely for display.
+
+**Design:**
+- Room creator can set a name via a modal on the home page. If omitted, the lobby and room header fall back to showing a truncated UUID.
+- The name is passed to the server in the `join` message (via query param `?name=` on the URL) and stored on the `Room` object. Only the first joiner's name is used (room creation).
+- Room names are editable in-room via an inline click-to-edit header. Edits send `update-room-name` → server updates the `Room`, broadcasts `room-name-updated` to the peer, and pushes an updated `room-list` to lobby subscribers.
+
+**Why not make the name the identifier:**
+- Names aren't unique — two rooms could be called "Standup". UUID guarantees uniqueness and non-guessability.
+- URLs stay stable even if the name changes. Renaming a room doesn't break shared links.
